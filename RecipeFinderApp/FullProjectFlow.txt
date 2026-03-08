@@ -1,0 +1,22 @@
+Recipe_FinderApp
+├── Creates NotificationMgr + NotificationDelegate
+├── Injects notificationMgr into environment
+└── ContentView
+    ├── Creates PantryManager
+    ├── Injects pantryManager into SearchRecipeView + ShoppingCartView
+    │
+    ├── SearchRecipeView (Tab 1)
+    │   ├── Owns RecipeAPI
+    │   ├── Reads @AppStorage preferences
+    │   ├── Navigates to SettingsView (gear icon)
+    │   └── Navigates to RecipeDetailView (row tap)
+    │       ├── Uses pantryManager (highlight pantry items)
+    │       ├── Uses notificationMgr (schedule reminders)
+    │       ├── Fetches ingredients from API
+    │       └── Reads @AppStorage (showNutrition)
+    │
+    ├── ShoppingCartView (Tab 2)
+    │   └── Uses pantryManager (add/remove items)
+    │
+    └── AppInfoView (Tab 3)
+        └── Reads Bundle.main (name, version, build, copyright)
