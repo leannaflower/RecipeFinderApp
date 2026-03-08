@@ -8,7 +8,6 @@ Recipe_FinderApp
     ├── SearchRecipeView (Tab 1)
     │   ├── Owns RecipeAPI
     │   ├── Reads @AppStorage preferences
-    │   ├── Navigates to SettingsView (gear icon)
     │   └── Navigates to RecipeDetailView (row tap)
     │       ├── Uses pantryManager (highlight pantry items)
     │       ├── Uses notificationMgr (schedule reminders)
@@ -18,5 +17,8 @@ Recipe_FinderApp
     ├── ShoppingCartView (Tab 2)
     │   └── Uses pantryManager (add/remove items)
     │
-    └── AppInfoView (Tab 3)
-        └── Reads Bundle.main (name, version, build, copyright)
+    ├── AppInfoView (Tab 3)
+    │   └── Reads Bundle.main (name, version, build, copyright)
+    │
+    └── SettingsView (Tab 4)
+        └── Reads/Writes @AppStorage preferences
