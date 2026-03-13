@@ -11,30 +11,36 @@ struct ContentView: View {
     @StateObject var pantryManager = PantryManager()
     
     var body: some View {
-        /*
-         TabView { // the tabs
-         |  search view
-         |  shopping cart view
-         |  settings view
-         }
-         */
         TabView {
+            HomeView()
+                .tabItem {
+                    Label("Home", systemImage: "house")
+                }
+            
             SearchRecipeView()
                 .environmentObject(pantryManager)
                 .tabItem {
                     Label("Recipes", systemImage: "magnifyingglass")
                 }
+            
+
+            
             ShoppingCartView()
                 .environmentObject(pantryManager)
                 .tabItem {
                     Label("Cart & Pantry", systemImage: "cart")
                 }
             
-            AppInfoView()
+            RemindersView()
                 .tabItem {
-                    Label("App Info", systemImage: "info.circle")
+                    Label("Reminders", systemImage: "bell")
                 }
             
+//            AppInfoView()
+//                .tabItem {
+//                    Label("App Info", systemImage: "info.circle")
+//                }
+//            
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")
@@ -45,4 +51,6 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(SavedRecipesManager())
+        .environmentObject(PantryManager())
 }

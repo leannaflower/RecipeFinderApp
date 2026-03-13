@@ -8,157 +8,222 @@
 import SwiftUI
 
 struct SearchRecipeView: View {
-    @StateObject private var api = RecipeAPI()
+    @StateObject private var recipeManager = RecipeAPI()
+    @EnvironmentObject var savedRecipesManager: SavedRecipesManager
     
     @State private var query: String = ""
     @State private var isLoading: Bool = false
     @State private var showActionSheet: Bool = false
+    @State private var selectedTab: Int = 0  // 0 = Search, 1 = Saved
     
     @AppStorage("dietPreference") private var dietPreference: String = "None"
-    @AppStorage("sortBy") private var sortBy: String = "Relevance"
-    @AppStorage("maxCookingTime") private var maxCookingTime: Int = 0
+    @AppStorage("sortBy") private var sortBy: String = ""
+
+    var currentFiltersText: String {
+        var filters: [String] = []
+        
+        if dietPreference != "None" {
+            filters.append("Diet: \(dietPreference)")
+        }
+        
+        if !sortBy.isEmpty {
+            filters.append("Sort: \(sortBy)")
+        }
+        
+        return filters.isEmpty ? "No Filters" : filters.joined(separator: " • ")
+    }
     
     var body: some View {
         NavigationView {
             ZStack {
-                Color("BackgroundColor")
-                    .edgesIgnoringSafeArea(.all)
-                
                 VStack(spacing: 0) {
-                    HStack(spacing: 10) {
-                        // Search Field
-                        TextField("Search for recipes...", text: $query, onCommit: {
-                            fetchRecipes()
-                        })
-                        .padding(12)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(10)
-                        .shadow(radius: 2)
-                        
-                        Button(action: {
-                            fetchRecipes()
-                        }) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.white)
-                                .padding(10)
-                                .background(Color.blue)
-                                .clipShape(Circle())
-                                .shadow(radius: 2)
-                        }
+                    Picker("", selection: $selectedTab) {
+                        Text("Search").tag(0)
+                        Text("Saved").tag(1)
                     }
-                    .padding(.horizontal)
-                    .padding(.top, 10)
+                    .pickerStyle(SegmentedPickerStyle())
+                    .padding()
                     
-                    //action sheet
-                    Button(action: {
-                        showActionSheet.toggle()
-                    }) {
-                        HStack {
-                            Image(systemName: "slider.horizontal.3")
-                            Text("Filter & Sort Options")
-                                .font(.body)
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                        .shadow(radius: 2)
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 10)
-                    
-                    // loading, empty, or results
-                    if isLoading {
-                        Spacer()
-                        ProgressView("Loading recipes...")
-                            .padding()
-                            .scaleEffect(1.5)
-                        Spacer()
-                    } else if api.recipes.isEmpty {
-                        Spacer()
-                        Text("Hmmm...Try searching for something new!")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    } else {
-                        List(api.recipes, id: \.id) { recipe in
-                            NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
-                                RecipeCard(recipe: recipe)
+                    if selectedTab == 0 {
+                        HStack(spacing: 10) {
+                            // Search Field
+                            TextField("Search for recipes...", text: $query, onCommit: {
+                                Task {
+                                    await fetchRecipes()
+                                }
+                            })
+                            .padding(12)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(10)
+                            .shadow(radius: 2)
+                            
+                            Button(action: {
+                                Task {
+                                    await fetchRecipes()
+                                }
+                            }) {
+                                Image(systemName: "magnifyingglass")
+                                    .foregroundColor(.white)
+                                    .padding(10)
+                                    .background(Color.accentColor) 
+                                    .clipShape(Circle())
+                                    .shadow(radius: 2)
                             }
-                            .listRowBackground(Color.clear)
                         }
-                        .listStyle(PlainListStyle())
-                        .transition(.opacity)
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                        
+                        HStack {
+                            // display filters
+                            VStack {
+                                Text("Current Filters:")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Text(currentFiltersText)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal)
+                            
+                            Spacer()
+                            //action sheet
+                            Button(action: {
+                                showActionSheet.toggle()
+                            }) {
+                                
+                                Image(systemName: "slider.horizontal.3")
+                                    .padding()
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.accentColor)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                                    .shadow(radius: 2)
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 10)
+                        }
+
+                        // loading, empty, or results
+                        if isLoading {
+                            Spacer()
+                            ProgressView("Loading recipes...")
+                                .padding()
+                                .scaleEffect(1.5)
+                            Spacer()
+                        } else if recipeManager.recipes.isEmpty {
+                            Spacer()
+                            Text("Hmmm...Try searching for something new!")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        } else {
+                            List(recipeManager.recipes, id: \.id) { recipe in
+                                NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
+                                    RecipeCard(recipe: recipe)
+                                }
+                                .listRowBackground(Color.clear)
+                            }
+                            .listStyle(PlainListStyle())
+                            .scrollContentBackground(.hidden)
+                            .transition(.opacity)
+                        }
+                    } else {
+                        // saved recipes list
+                        if savedRecipesManager.savedRecipes.isEmpty {
+                            Spacer()
+                            Text("No saved recipes yet!")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        } else {
+                            List(savedRecipesManager.savedRecipes, id: \.id) { recipe in
+                                NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
+                                    RecipeCard(recipe: recipe)
+                                }
+                                .listRowBackground(Color.clear)
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        savedRecipesManager.removeRecipe(recipe)
+                                    } label: {
+                                        Label("Remove", systemImage: "trash")
+                                    }
+                                }
+                            }
+                            .listStyle(PlainListStyle())
+                            .scrollContentBackground(.hidden)
+                        }
                     }
                 }
                 .navigationTitle("Recipe Finder")
             }
             .confirmationDialog("Filter & Sort Recipes", isPresented: $showActionSheet, titleVisibility: .visible) {
                 // sorting
-                Button("Sort by Relevance") { sortBy = "Relevance" }
-                Button("Sort by Popularity") { sortBy = "Popularity" }
-                Button("Sort by Healthiness") { sortBy = "Healthiness" }
+                Button("Sort by Popularity") {
+                    sortBy = "popularity"
+                    Task {
+                        await fetchRecipes()
+                    }
+                }
+                Button("Sort by Healthiness") {
+                    sortBy = "healthiness"
+                    Task {
+                        await fetchRecipes()
+                    }
+                }
+                Button("No Sort") {
+                    sortBy = ""
+                    Task {
+                        await fetchRecipes()
+                    }
+                }
                 
                 // diet preferences
-                Button("Set Diet: Vegetarian") { dietPreference = "Vegetarian" }
-                Button("Set Diet: Vegan") { dietPreference = "Vegan" }
-                Button("Set Diet: None") { dietPreference = "None" }
+                Button("Set Diet: Vegetarian") {
+                    dietPreference = "vegetarian"
+                    Task {
+                        await fetchRecipes()
+                    }
+                }
+                Button("Set Diet: Vegan") {
+                    dietPreference = "vegan"
+                    Task {
+                        await fetchRecipes()
+                    }
+                }
+                Button("Set Diet: None") {
+                    dietPreference = "None"
+                    Task {
+                        await fetchRecipes()
+                    }
+                }
+                
                 Button("Cancel", role: .cancel) {}
             }
         }
     }
     
-    func fetchRecipes() {
+    func fetchRecipes() async {
         withAnimation {
             isLoading = true
         }
         
-        api.fetchRecipes(query: query, dietPreference: dietPreference)
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        defer {
             withAnimation {
                 isLoading = false
             }
         }
-    }
-}
-
-// Recipe Card View
-// pure presentational subview for a recipe
-struct RecipeCard: View {
-    let recipe: Recipe
-    
-    var body: some View {
-        HStack(spacing: 15) {
-            AsyncImage(url: URL(string: recipe.image))
-                .frame(width: 60, height: 60)
-                .aspectRatio(contentMode: .fill)
-                .clipShape(Circle())
-                .shadow(radius: 3)
-            
-            VStack(alignment: .leading, spacing: 5) {
-                Text(recipe.title)
-                    .font(.headline)
-                    .lineLimit(2)
-                
-                Text("Tap to see details")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
+        
+        do {
+            recipeManager.recipes = try await recipeManager.fetchRecipes(query: query, dietPreference: dietPreference, sortBy: sortBy)
+        } catch {
+            print("Failed to fetch recipes: \(error)")
+            recipeManager.recipes = []
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 15)
-                .fill(Color(UIColor.secondarySystemBackground))
-                .shadow(radius: 2)
-        )
-        .padding(.vertical, 5)
     }
 }
 
 #Preview {
     SearchRecipeView()
+        .environmentObject(SavedRecipesManager())
 }

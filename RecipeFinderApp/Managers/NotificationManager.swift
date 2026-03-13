@@ -20,10 +20,10 @@ class NotificationManager: ObservableObject {
     }
     
     // schedule notifications
-    func scheduleNotification(date: Date) {
+    func scheduleNotification(date: Date, recipeTitle: String) {
         let content = UNMutableNotificationContent()
-        content.title = "Reminder"
-        content.body = "This is your scheduled notification"
+        content.title = "Time to cook! 🍳"
+        content.body = "Don't forget to make \(recipeTitle) today."
         content.sound = .default
         
         let calendar = Calendar(identifier: .gregorian)
@@ -35,7 +35,7 @@ class NotificationManager: ObservableObject {
             if let error = error {
                 print("Error scheduling notification: \(error.localizedDescription)")
             } else {
-                print("Notification scheduled successfully for \(date).")
+                print("Notification scheduled for \(recipeTitle) at \(date).")
             }
         }
     }

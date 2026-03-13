@@ -85,6 +85,10 @@ struct RecipeResponse: Codable {
     let results: [Recipe]
 }
 
+struct RandomRecipeResponse: Codable {
+    let recipes: [Recipe]
+}
+
 // Wraps the ingredient endpoint response — extracts the "ingredients" array
 struct IngredientResponse: Codable {
     let ingredients: [Ingredient]
@@ -93,32 +97,90 @@ struct IngredientResponse: Codable {
 //
 class RecipeAPI: ObservableObject {
     @Published var recipes: [Recipe] = []
-    @AppStorage("maxCookingTime") private var maxCookingTime: Int = 30
-    @AppStorage("sortBy") private var sortBy: String = "Relevance"
+    @Published var randomRecipes: [Recipe] = []
+    @Published var popularRecipes: [Recipe] = []
     
-    // Build URL → Fire async request → Decode JSON response → Jump to main thread → Update the published variable → UI re-renders automatically
-    func fetchRecipes(query: String, dietPreference: String) {
-        let apiKey = "5ca5612f076f4760956a7e9eb02754d3"
+    @MainActor
+    func fetchRecipes(query: String, dietPreference: String, sortBy: String) async throws -> [Recipe] {
+        let apiKey = Secrets.apiKey
+        let numberOfResults = 30
+        let sortFilter = sortBy.lowercased()
         let dietFilter = dietPreference != "None" ? "&diet=\(dietPreference)" : ""
-        let timeFilter = maxCookingTime > 0 ? "&maxReadyTime=\(maxCookingTime)" : ""
-        let sortFilter = "&sort=\(sortBy.lowercased())"
-        let urlString = "https://api.spoonacular.com/recipes/complexSearch?query=\(query)\(dietFilter)\(timeFilter)\(sortFilter)&apiKey=\(apiKey)&addRecipeNutrition=true"
-        
-        guard let url = URL(string: urlString) else {   // tries to create valid URL from the string; if fails, it exits the function early
-            return
+        let urlString = "https://api.spoonacular.com/recipes/complexSearch?query=\(query)&number=\(numberOfResults)\(dietFilter)&sort=\(sortFilter)&apiKey=\(apiKey)&addRecipeNutrition=true"
+        guard let url = URL(string: urlString) else {
+            throw RCErrors.InvalidURL
         }
         
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {    // unwraps the optional
-                do {
-                    let decodedResponse = try JSONDecoder().decode(RecipeResponse.self, from: data) // unwraps the raw bytes into the RecipeResponse struct
-                    DispatchQueue.main.async {  // schedule a block of code to run on the main thread asynchronously; update UI elements after completing a background task
-                        self.recipes = decodedResponse.results
-                    }
-                } catch {
-                    print("Error decoding JSON: \(error)")
-                }
-            }
-        }.resume()
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+            throw RCErrors.InvalidResponse
+        }
+        
+        do {
+            let decodedResponse = try JSONDecoder().decode(RecipeResponse.self, from: data)
+            return decodedResponse.results
+        } catch {
+            throw RCErrors.InvalidData
+        }
     }
+
+    func fetchRandomRecipes() async throws -> [Recipe] {
+        let apiKey = Secrets.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let urlString = "https://api.spoonacular.com/recipes/random?number=1&apiKey=\(apiKey)"
+        
+        guard let url = URL(string: urlString) else {
+            throw RCErrors.InvalidURL
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw RCErrors.InvalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            print("Status code:", httpResponse.statusCode)
+            print("Response body:", String(data: data, encoding: .utf8) ?? "No body")
+            throw RCErrors.InvalidResponse
+        }
+        
+        do {
+            let decodedResponse = try JSONDecoder().decode(RandomRecipeResponse.self, from: data)
+            return decodedResponse.recipes
+        } catch {
+            print("Decoding error:", error)
+            print("Raw JSON:", String(data: data, encoding: .utf8) ?? "No body")
+            throw RCErrors.InvalidData
+        }
+    }
+    
+    func fetchPopularRecipes() async throws -> [Recipe] {
+        let apiKey = Secrets.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let urlString = "https://api.spoonacular.com/recipes/complexSearch?query=meal&number=10&sort=popularity&apiKey=\(apiKey)&addRecipeNutrition=true"
+        
+        guard let url = URL(string: urlString) else {
+            throw RCErrors.InvalidURL
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw RCErrors.InvalidResponse
+        }
+        
+        do {
+            let decodedResponse = try JSONDecoder().decode(RecipeResponse.self, from: data)
+            return decodedResponse.results
+        } catch {
+            throw RCErrors.InvalidData
+        }
+    }
+}
+
+enum RCErrors: Error {
+    case InvalidURL
+    case InvalidResponse
+    case InvalidData
 }

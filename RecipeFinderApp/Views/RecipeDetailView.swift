@@ -12,7 +12,7 @@ struct RecipeDetailView: View {
     let recipe: Recipe
     @EnvironmentObject var pantryManager: PantryManager // check what's in the pantry
     @EnvironmentObject var notificationMgr: NotificationManager // schedule reminders
-    
+    @EnvironmentObject var savedRecipesManager: SavedRecipesManager
     
     @State private var ingredients: [Ingredient] = []
     @State private var isLoading = true
@@ -60,6 +60,25 @@ struct RecipeDetailView: View {
                             HStack {
                                 Image(systemName: "bell")
                                 Text("Set Reminder for Cooking")
+                            }
+                            .font(.body)
+                            .padding()
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                            .shadow(radius: 2)
+                        }
+                        
+                        Button(action: {
+                            if savedRecipesManager.isSaved(recipe) {
+                                savedRecipesManager.removeRecipe(recipe)
+                            } else {
+                                savedRecipesManager.saveRecipe(recipe)
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: savedRecipesManager.isSaved(recipe) ? "bookmark.fill" : "bookmark")
+                                Text(savedRecipesManager.isSaved(recipe) ? "Saved" : "Save Recipe")
                             }
                             .font(.body)
                             .padding()
@@ -150,7 +169,7 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $showCustomActionSheet) {
             CustomActionSheet(alertDate: $alertDate) {
-                notificationMgr.scheduleNotification(date: alertDate)
+                notificationMgr.scheduleNotification(date: alertDate, recipeTitle: recipe.title)
                 withAnimation {
                     showConfirmation = true
                 }
@@ -165,13 +184,15 @@ struct RecipeDetailView: View {
     }
     
     func fetchIngredients(recipeId: Int) {
-        let apiKey = "5ca5612f076f4760956a7e9eb02754d3"
+        let apiKey = "4e093384d814433a9b1af7de3fb300f3"
         let urlString = "https://api.spoonacular.com/recipes/\(recipeId)/ingredientWidget.json?apiKey=\(apiKey)"
         
         guard let url = URL(string: urlString) else { return }
         
         URLSession.shared.dataTask(with: url) { data, response, error in
             if let data = data {
+//                print(String(data: data, encoding: .utf8) ?? "no data")
+
                 do {
                     let decodedResponse = try JSONDecoder().decode(IngredientResponse.self, from: data)
                     DispatchQueue.main.async {
@@ -192,6 +213,7 @@ struct RecipeDetailView: View {
                 }
             }
         }.resume()
+        
     }
 }
 

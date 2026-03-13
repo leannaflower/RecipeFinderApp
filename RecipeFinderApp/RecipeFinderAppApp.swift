@@ -13,6 +13,7 @@ struct RecipeFinderAppApp: App {
      NotificationMgr() is instantiated here which means its init() runs immediately; so the notification permission popup gets triggered as soon as the app launches.
      */
     let notificationDelegate = NotificationDelegate()
+    let savedRecipesManager = SavedRecipesManager()
     
     init() {
         UNUserNotificationCenter.current().delegate = notificationDelegate
@@ -25,6 +26,7 @@ struct RecipeFinderAppApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(notificationMgr) // every view inside ContentView can access it without you having to pass it manually through each layer
+                .environmentObject(savedRecipesManager)
         }
     }
 }

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("dietPreference") var dietPreference: String = "None"
-    @AppStorage("maxCookingTime") var maxCookingTime: Int = 0
+//    @AppStorage("maxCookingTime") var maxCookingTime: Int = 0
     @AppStorage("sortBy") var sortBy: String = "Relevance"
     @AppStorage("showNutrition") var showNutrition: Bool = true
     
@@ -29,21 +29,14 @@ struct SettingsView: View {
                     }
                 }
                 
-                Section(header: Text("Cooking Time").font(.headline)) {
-                    Picker("Maximum Cooking Time", selection: $maxCookingTime) {
-                        Text("All Times").tag(0)
-                        Text("10 minutes").tag(10)
-                        Text("30 minutes").tag(30)
-                        Text("60 minutes").tag(60)
-                    }
-                }
-                
                 Section(header: Text("Sorting Options").font(.headline)) {
                     Picker("Sort By", selection: $sortBy) {
-                        Text("Relevance").tag("Relevance")
-                        Text("Popularity").tag("Popularity")
-                        Text("Healthiness").tag("Healthiness")
+                        Text("No Sort").tag("")
+                        Text("Popularity").tag("popularity")
+                        Text("Healthiness").tag("healthiness")
+                        Text("Time").tag("time")
                     }
+
                 }
                 
                 Section(header: Text("Display Options").font(.headline)) {
@@ -69,6 +62,35 @@ struct SettingsView: View {
                     .padding()
                     .background(Color.accentColor)
                     .cornerRadius(10)
+                }
+                
+                // app info
+                Section(header: Text("About").font(.headline)) {
+                    HStack {
+                        Text("App Name")
+                        Spacer()
+                        Text(Bundle.main.displayName ?? "")
+                            .foregroundColor(.secondary)
+                    }
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text(Bundle.main.version ?? "")
+                            .foregroundColor(.secondary)
+                    }
+                    HStack {
+                        Text("Build")
+                        Spacer()
+                        Text(Bundle.main.build ?? "")
+                            .foregroundColor(.secondary)
+                    }
+                    HStack {
+                        Text("Copyright")
+                        Spacer()
+                        Text(Bundle.main.copyright ?? "")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
                 }
             }
             
@@ -129,7 +151,7 @@ struct SettingsView: View {
     
     func resetToDefault() {
         dietPreference = "None"
-        maxCookingTime = 0
+//        maxCookingTime = 0
         sortBy = "Relevance"
         showNutrition = true
     }
